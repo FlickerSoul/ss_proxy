@@ -62,6 +62,8 @@ class ReplyType(enum.IntEnum):
 
 
 class Server:
+    logger = logging.getLogger('server')
+
     def __init__(self, args: argparse.Namespace = None):
         self.address_family = args.address_family
         self.socket_type = args.socket_type
@@ -80,7 +82,7 @@ class Server:
         self.threads: List[threading.Thread] = []
         self.blocking: bool = args.blocking
 
-        logging.debug(f'init {self}')
+        self.logger.debug(f'init {self}')
 
     def __str__(self):
         return f'server at {self.socket_address}:{self.remote_port}'
@@ -91,7 +93,7 @@ class Server:
         s.bind(
             ('', self.local_port)
         )
-        logging.debug(f'socket bonded {self.local_port}')
+        self.logger.debug(f'socket bonded {self.local_port}')
         s.listen(self.socket_client_num)
 
         return s
@@ -136,9 +138,9 @@ class Server:
     def handle_request(self) -> None:
         try:
             client, client_addr = self.accept_client()
-            logging.debug(f'accepted client {client.getpeername()} at {client_addr}')
+            self.logger.debug(f'accepted client {client.getpeername()} at {client_addr}')
         except socket.error as e:
-            logging.error(f'encountered socket error {e}')
+            self.logger.error(f'encountered socket error {e}')
             return
 
         t = threading.Thread(
@@ -147,23 +149,25 @@ class Server:
         )
         self.threads.append(t)
         t.start()
-        logging.info('started handler thread')
+        self.logger.info('started handler thread')
 
     def _thread_helper(self, client: socket.socket, client_addr: Tuple) -> None:
         try:
-            logging.info('start handling')
+            self.logger.info('start handling')
             self.handler(client, client_addr, self)()
         except Exception as e:
-            logging.error(f'error {e} occurred when talking to client {client_addr}')
+            self.logger.error(f'error {e} occurred when talking to client {client_addr}')
             import traceback
-            logging.error(f'trace back: ')
-            logging.error(traceback.format_exc())
+            self.logger.error(f'trace back: ')
+            self.logger.error(traceback.format_exc())
         finally:
             self.close_client(client)
-            logging.debug(f'closed client {client_addr}')
+            self.logger.debug(f'closed client {client_addr}')
 
 
 class Handler:
+    logger = logging.getLogger('handler')
+
     def __init__(self, client: socket.socket, client_addr: Any, server: Server) -> None:
         self.client = client
         self.client_addr = client_addr
@@ -185,8 +189,8 @@ class Handler:
 
     def connect(self, remote) -> None:
         try:
-            logging.debug(f'connect client {self.client.getsockname()} -> {self.client.getpeername()}')
-            logging.debug(f'connect remote {remote.getsockname()} -> {remote.getpeername()}')
+            self.logger.debug(f'connect client {self.client.getsockname()} -> {self.client.getpeername()}')
+            self.logger.debug(f'connect remote {remote.getsockname()} -> {remote.getpeername()}')
 
             with PollSelector() as selector:
                 selector.register(self.client, selectors.EVENT_READ)
@@ -195,27 +199,27 @@ class Handler:
                 while True:
                     read = tuple(c[0].fileobj for c in selector.select())
 
-                    logging.debug(f'read descriptors: {read}')
+                    self.logger.debug(f'read descriptors: {read}')
 
                     if self.client in read:
                         data = self.client.recv(4096)
-                        logging.info(f'read client: {data}')
+                        self.logger.info(f'read client: {data}')
                         if len(data) <= 0:
-                            logging.debug('client break')
+                            self.logger.debug('client break')
                             break
                         result = remote.sendall(data)
-                        logging.debug(f'send remote: {data}')
+                        self.logger.debug(f'send remote: {data}')
                         if result is not None:
                             raise Exception('failed to send data to remote')
 
                     if remote in read:
                         data = remote.recv(4096)
-                        logging.info(f'read remote: {data}')
+                        self.logger.info(f'read remote: {data}')
                         if len(data) <= 0:
-                            logging.debug('client break')
+                            self.logger.debug('client break')
                             break
                         result = self.client.sendall(data)
-                        logging.debug(f'send client: {data}')
+                        self.logger.debug(f'send client: {data}')
                         if result is not None:
                             raise Exception('failed to send data to client')
         finally:
@@ -237,6 +241,11 @@ class Handler:
             self.handle()
         finally:
             self.end()
+
+
+def output_error_exc(lgr: logging.Logger) -> None:
+    import traceback
+    lgr.error(traceback.format_exc())
 
 
 class ServerConfig(argparse.Namespace):

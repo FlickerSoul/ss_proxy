@@ -5,7 +5,7 @@ import struct
 import logging
 from typing import Tuple
 
-from utils import AddrType, Handler, Server, ServerConfig
+from utils import AddrType, Handler, Server, ServerConfig, output_error_exc
 
 
 class SocksServer(Server):
@@ -23,40 +23,42 @@ class ServerHandler(Handler):
 
         if address_type == AddrType.ipv4:
             addr = socket.inet_ntoa(self.read_file.read(4))
-            logging.debug('is ipv4')
+            self.logger.debug('is ipv4')
         elif address_type == AddrType.ipv6:
             addr = socket.inet_ntop(socket.AF_INET6, self.read_file.read(16))
-            logging.debug('is ipv6')
+            self.logger.debug('is ipv6')
         elif address_type == AddrType.domain:
             length = ord(self.client.recv(1))
             addr = self.read_file.read(length)
-            logging.debug('is domain name')
+            self.logger.debug('is domain name')
         else:
-            logging.error('addr type not supported')
+            self.logger.error('addr type not supported')
             return
 
         port = struct.unpack('>H', self.read_file.read(2))[0]
-        logging.debug(f'got port {port}')
+        self.logger.debug(f'got port {port}')
 
         try:
             remote = self.generate_remote((addr, port))
             self.connect(remote)
         except socket.error as e:
-            logging.error(e)
+            self.logger.error(e)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     config = ServerConfig(ServerHandler)
 
+    logger = logging.getLogger('server_main')
+
     try:
         server = SocksServer(config)
-        print(f'started server at {""}:{config.local_port}')
+        logger.info(f'started server at {""}:{config.local_port}')
         server.run_server()
     except socket.error as err:
-        print(f'error {err} occurs.')
-
+        logger.error(f'error {err} occurs.')
     except KeyboardInterrupt:
-        print('Key board interrupted')
+        logger.error('Key board interrupted')
+        output_error_exc(logger)
     finally:
-        print('server stopped')
+        logger.info('server stopped')
