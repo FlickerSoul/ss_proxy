@@ -35,7 +35,7 @@ def main() -> None:
         launcher_config_cls = ServerConfig
     elif server_type.endswith('client'):
         launcher_cls = SocksClient
-        launcher_handler = ClientHandler
+        launcher_handler: Type[ClientHandler] = ClientHandler
         if server_type == 'remote_client':
             launcher_config_cls = RemoteClientConfig
         elif server_type == 'local_client':
@@ -43,6 +43,8 @@ def main() -> None:
         else:
             logger.error(f'unknown client type: {server_type}')
             raise
+        launcher_handler.socks_server_addr = launcher_config_cls.address
+        launcher_handler.socks_server_port = launcher_config_cls.port
     else:
         logger.error(f'unrecognized type {args.type}')
         raise

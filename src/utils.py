@@ -261,39 +261,42 @@ def output_error_exc(lgr: logging.Logger) -> None:
 
 
 class ServerConfig(argparse.Namespace):
+    address_family = socket.AF_INET
+    socket_type = socket.SOCK_STREAM
+    address = ''
+    port = 0
+    local_port = 12344
+    client_num = 5
+    blocking = False
+
     def __init__(self, handler: Type[Handler]):
         super(ServerConfig, self).__init__()
-        self.address_family = socket.AF_INET
-        self.socket_type = socket.SOCK_STREAM
-        self.address = ''
-        self.port = 0
-        self.local_port = 12344
-        self.client_num = 5
         self.handler = handler
-        self.blocking = False
 
 
 class LocalClientConfig(argparse.Namespace):
+    address_family = socket.AF_INET
+    socket_type = socket.SOCK_STREAM
+    address = ''
+    port = 12344
+    local_port = 7690
+    client_num = 5
+    blocking = False
+
     def __init__(self, handler: Type[Handler]) -> None:
         super(LocalClientConfig, self).__init__()
-        self.address_family = socket.AF_INET
-        self.socket_type = socket.SOCK_STREAM
-        self.address = ''
-        self.port = 12344
-        self.local_port = 7690
-        self.client_num = 5
         self.handler = handler
-        self.blocking = False
 
 
 class RemoteClientConfig(argparse.Namespace):
+    address_family = socket.AF_INET
+    socket_type = socket.SOCK_STREAM
+    address = 'freedom.flicker-soul.me'
+    port = 12344
+    local_port = 7790
+    client_num = 5
+    blocking = False
+
     def __init__(self, handler: Type[Handler]):
         super(RemoteClientConfig, self).__init__()
-        self.address_family = socket.AF_INET
-        self.socket_type = socket.SOCK_STREAM
-        self.address = 'freedom.flicker-soul.me'
-        self.port = 12344
-        self.local_port = 7790
-        self.client_num = 5
         self.handler = handler
-        self.blocking = False
