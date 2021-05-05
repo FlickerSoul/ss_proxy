@@ -4,7 +4,6 @@ import abc
 import argparse
 import enum
 import logging
-import select
 import selectors
 import socket
 import threading
@@ -67,7 +66,8 @@ class Server:
         self.address_family = args.address_family
         self.socket_type = args.socket_type
         self.socket_address = args.address
-        self.socket_port = args.port
+        self.remote_port = args.port
+        self.local_port = args.local_port
         self.socket_client_num: int = args.client_num
 
         self.handler: Callable = args.handler
@@ -80,13 +80,18 @@ class Server:
         self.threads: List[threading.Thread] = []
         self.blocking: bool = args.blocking
 
+        logging.debug(f'init {self}')
+
+    def __str__(self):
+        return f'server at {self.socket_address}:{self.remote_port}'
+
     def init_socket(self) -> socket.socket:
         s = socket.socket(self.address_family, self.socket_type)
         # s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        print(self.socket_address)
         s.bind(
-            (self.socket_address, self.socket_port)
+            ('127.0.0.1', self.local_port)
         )
+        logging.debug(f'socket bonded {self.local_port}')
         s.listen(self.socket_client_num)
 
         return s
@@ -146,6 +151,7 @@ class Server:
 
     def _thread_helper(self, client: socket.socket, client_addr: Tuple) -> None:
         try:
+            logging.info('start handling')
             self.handler(client, client_addr, self)()
         except Exception as e:
             logging.debug(f'error {e} occurred when talking to client {client_addr}')
@@ -172,6 +178,10 @@ class Handler:
     def handle(self) -> None:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def generate_remote(self, addr_info: Tuple) -> socket.socket:
+        raise NotImplementedError
+
     @staticmethod
     def send_all(sock: socket.socket, data: bytes) -> int:
         bytes_sent = 0
@@ -183,28 +193,42 @@ class Handler:
             if bytes_sent == len(data):
                 return bytes_sent
 
-    def connect(self, remote) -> None:
+    def connect(self, client, remote) -> None:
         try:
-            file_descriptors = [self.client, remote]
-            while True:
-                read, _, _ = select.select(file_descriptors, [], [])
-                if self.client in read:
-                    data = self.client.recv(4096)
-                    if len(data) <= 0:
-                        break
-                    result = self.send_all(remote, data)
-                    if result < len(data):
-                        raise Exception('failed to send data to remote')
+            logging.debug(f'client equal {client == self.client}')
+            logging.debug(f'connect client {client.getsockname()} -> {client.getpeername()}')
+            logging.debug(f'connect remote {remote.getsockname()} -> {remote.getpeername()}')
 
-                if remote in read:
-                    data = remote.recv(4096)
-                    if len(data) <= 0:
-                        break
-                    result = self.send_all(self.client, data)
-                    if result < len(data):
-                        raise Exception('failed to send data to client')
+            with PollSelector() as selector:
+                selector.register(client, selectors.EVENT_READ)
+                selector.register(remote, selectors.EVENT_READ)
+
+                while True:
+                    read = tuple(c[0].fileobj for c in selector.select())
+
+                    if client in read:
+                        data = client.recv(4096)
+                        logging.info(f'read client: {data}')
+                        if len(data) <= 0:
+                            logging.debug('client break')
+                            break
+                        result = self.send_all(remote, data)
+                        logging.debug(f'send remote: {data}')
+                        if result < len(data):
+                            raise Exception('failed to send data to remote')
+
+                    if remote in read:
+                        data = remote.recv(4096)
+                        logging.info(f'read remote: {data}')
+                        if len(data) <= 0:
+                            logging.debug('client break')
+                            break
+                        result = self.send_all(client, data)
+                        logging.debug(f'send client: {data}')
+                        if result < len(data):
+                            raise Exception('failed to send data to client')
         finally:
-            self.client.close()
+            client.close()
             remote.close()
 
     def end(self) -> None:
@@ -230,8 +254,8 @@ class ServerConfig(argparse.Namespace):
         self.address_family = socket.AF_INET
         self.socket_type = socket.SOCK_STREAM
         self.address = '127.0.0.1'
-        self.port = 13245
-        self.local_port = 0
+        self.port = 0
+        self.local_port = 12344
         self.client_num = 5
         self.handler = handler
         self.blocking = False
@@ -243,8 +267,8 @@ class ClientConfig(argparse.Namespace):
         self.address_family = socket.AF_INET
         self.socket_type = socket.SOCK_STREAM
         self.address = '127.0.0.1'
-        self.port = 7590
-        self.local_port = 7590
+        self.port = 12344
+        self.local_port = 7790
         self.client_num = 5
         self.handler = handler
         self.blocking = False

@@ -76,7 +76,8 @@ class ClientHandler(Handler):
         return True
 
     def get_request(self) -> Optional[Tuple[Tuple[str, int], bytes]]:
-        data: bytes = self.read_file.read(4)
+        logging.debug('start getting request')
+        data: bytes = self.client.recv(4)
         ver, cmd, _, addr_type = struct.unpack('BBBB', data)
 
         logging.debug(
@@ -128,35 +129,42 @@ class ClientHandler(Handler):
             (addr, port), addr_to_send
         )
 
+    def generate_remote(self, addr_info: Tuple) -> socket.socket:
+        if self.ipv6_flag:
+            remote = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        else:
+            remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        remote.settimeout(None)
+        remote.connect(addr_info)
+        return remote
+
     def handle(self) -> None:
-        logging.debug('start handling')
         try:
-            self.handshake()
+            status = self.handshake()
+            if not status:
+                raise
+            logging.debug('finished handshake')
 
             request_feedback = self.get_request()
             if request_feedback is None:
                 raise
 
             connect_dest, request_bytes = request_feedback
+            logging.debug('finished getting request')
 
             try:
                 # reply immediately
-                if self.ipv6_flag:
-                    remote = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-                else:
-                    remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                remote = self.generate_remote((self.socks_server_addr, self.socks_server_port))
                 # remote.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
-                remote.connect(
-                    (self.socks_server_addr, self.socks_server_port)
-                )
                 # self.send_encrypt(remote, addr_to_send)
                 remote.send(request_bytes)
             except socket.error as e:
                 logging.error(e)
                 return
             logging.info(f'connecting {connect_dest}')
-            self.connect(remote)
+            self.connect(self.client, remote)
         except socket.error as e:
             logging.error(e)
 
@@ -166,10 +174,12 @@ if __name__ == '__main__':
     config = ClientConfig(ClientHandler)
 
     try:
-        ClientHandler.socks_server_addr = '127.0.0.1'
-        ClientHandler.socks_server_port = 13245
+        ClientHandler.socks_server_addr = config.address
+        ClientHandler.socks_server_port = config.port
         server = SocksClient(config)
-        logging.info(f'started server at {config.address}:{config.port}')
+        logging.info(
+            f':{config.local_port} -> {ClientHandler.socks_server_addr}:{ClientHandler.socks_server_port}'
+        )
         server.run_server()
     except KeyboardInterrupt:
         logging.info('Key board interrupted')

@@ -3,6 +3,7 @@ from __future__ import annotations
 import socket
 import struct
 import logging
+from typing import Tuple
 
 from utils import AddrType, Handler, Server, ServerConfig
 
@@ -12,6 +13,11 @@ class SocksServer(Server):
 
 
 class ServerHandler(Handler):
+    def generate_remote(self, addr_info: Tuple) -> socket.socket:
+        remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        remote.connect(addr_info)
+        return remote
+
     def handle(self) -> None:
         address_type = ord(self.client.recv(1))
 
@@ -33,10 +39,8 @@ class ServerHandler(Handler):
         logging.debug(f'got port {port}')
 
         try:
-            remote = socket.create_connection(
-                (addr, port)
-            )
-            self.connect(remote)
+            remote = self.generate_remote((addr, port))
+            self.connect(self.client, remote)
         except socket.error as e:
             logging.error(e)
 
@@ -47,10 +51,10 @@ if __name__ == '__main__':
 
     try:
         server = SocksServer(config)
-        print(f'started server at {config.address}:{config.port}')
+        print(f'started server at {""}:{config.local_port}')
         server.run_server()
-    except socket.error as e:
-        print(f'error {e} occurs.')
+    except socket.error as err:
+        print(f'error {err} occurs.')
 
     except KeyboardInterrupt:
         print('Key board interrupted')
