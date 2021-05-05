@@ -40,7 +40,7 @@ class ServerHandler(Handler):
 
         try:
             remote = self.generate_remote((addr, port))
-            self.connect(self.client, remote)
+            self.connect(remote)
         except socket.error as e:
             logging.error(e)
 

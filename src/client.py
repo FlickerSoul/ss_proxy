@@ -5,7 +5,7 @@ import struct
 import socket
 from typing import Tuple, Optional
 
-from utils import Server, Handler, ClientConfig, ReplyType, AddrType, CommandType
+from utils import Server, Handler, ReplyType, AddrType, CommandType, RemoteClientConfig, LocalClientConfig
 
 
 class SocksClient(Server):
@@ -164,14 +164,18 @@ class ClientHandler(Handler):
                 logging.error(e)
                 return
             logging.info(f'connecting {connect_dest}')
-            self.connect(self.client, remote)
+            self.connect(remote)
         except socket.error as e:
             logging.error(e)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    config = ClientConfig(ClientHandler)
+    is_remote = True
+    if is_remote:
+        config = RemoteClientConfig(ClientHandler)
+    else:
+        config = LocalClientConfig(ClientHandler)
 
     try:
         ClientHandler.socks_server_addr = config.address

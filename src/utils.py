@@ -8,7 +8,7 @@ import selectors
 import socket
 import threading
 from selectors import PollSelector
-from typing import Any, BinaryIO, Callable, List, Tuple, Optional
+from typing import Any, BinaryIO, Callable, List, Tuple, Optional, Type
 
 
 class CommandType(enum.IntEnum):
@@ -89,7 +89,7 @@ class Server:
         s = socket.socket(self.address_family, self.socket_type)
         # s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(
-            ('127.0.0.1', self.local_port)
+            ('', self.local_port)
         )
         logging.debug(f'socket bonded {self.local_port}')
         s.listen(self.socket_client_num)
@@ -111,14 +111,14 @@ class Server:
     def fileno(self) -> int:
         return self.socket.fileno()
 
-    def run_server(self) -> None:
+    def run_server(self, interval: float = 0.5) -> None:
         self.shut_down_event.clear()
         try:
             with PollSelector() as selector:
                 selector.register(self, selectors.EVENT_READ)
 
                 while not self.shut_down:
-                    has_request = selector.select()
+                    has_request = selector.select(interval)
                     if has_request:
                         self.handle_request()
         finally:
@@ -154,9 +154,10 @@ class Server:
             logging.info('start handling')
             self.handler(client, client_addr, self)()
         except Exception as e:
-            logging.debug(f'error {e} occurred when talking to client {client_addr}')
+            logging.error(f'error {e} occurred when talking to client {client_addr}')
             import traceback
-            traceback.print_exc()
+            logging.error(f'trace back: ')
+            logging.error(traceback.format_exc())
         finally:
             self.close_client(client)
             logging.debug(f'closed client {client_addr}')
@@ -182,39 +183,29 @@ class Handler:
     def generate_remote(self, addr_info: Tuple) -> socket.socket:
         raise NotImplementedError
 
-    @staticmethod
-    def send_all(sock: socket.socket, data: bytes) -> int:
-        bytes_sent = 0
-        while True:
-            r = sock.send(data[bytes_sent:])
-            if r < 0:
-                return r
-            bytes_sent += r
-            if bytes_sent == len(data):
-                return bytes_sent
-
-    def connect(self, client, remote) -> None:
+    def connect(self, remote) -> None:
         try:
-            logging.debug(f'client equal {client == self.client}')
-            logging.debug(f'connect client {client.getsockname()} -> {client.getpeername()}')
+            logging.debug(f'connect client {self.client.getsockname()} -> {self.client.getpeername()}')
             logging.debug(f'connect remote {remote.getsockname()} -> {remote.getpeername()}')
 
             with PollSelector() as selector:
-                selector.register(client, selectors.EVENT_READ)
+                selector.register(self.client, selectors.EVENT_READ)
                 selector.register(remote, selectors.EVENT_READ)
 
                 while True:
                     read = tuple(c[0].fileobj for c in selector.select())
 
-                    if client in read:
-                        data = client.recv(4096)
+                    logging.debug(f'read descriptors: {read}')
+
+                    if self.client in read:
+                        data = self.client.recv(4096)
                         logging.info(f'read client: {data}')
                         if len(data) <= 0:
                             logging.debug('client break')
                             break
-                        result = self.send_all(remote, data)
+                        result = remote.sendall(data)
                         logging.debug(f'send remote: {data}')
-                        if result < len(data):
+                        if result is not None:
                             raise Exception('failed to send data to remote')
 
                     if remote in read:
@@ -223,12 +214,12 @@ class Handler:
                         if len(data) <= 0:
                             logging.debug('client break')
                             break
-                        result = self.send_all(client, data)
+                        result = self.client.sendall(data)
                         logging.debug(f'send client: {data}')
-                        if result < len(data):
+                        if result is not None:
                             raise Exception('failed to send data to client')
         finally:
-            client.close()
+            self.client.close()
             remote.close()
 
     def end(self) -> None:
@@ -249,11 +240,11 @@ class Handler:
 
 
 class ServerConfig(argparse.Namespace):
-    def __init__(self, handler):
+    def __init__(self, handler: Type[Handler]):
         super(ServerConfig, self).__init__()
         self.address_family = socket.AF_INET
         self.socket_type = socket.SOCK_STREAM
-        self.address = '127.0.0.1'
+        self.address = ''
         self.port = 0
         self.local_port = 12344
         self.client_num = 5
@@ -261,12 +252,25 @@ class ServerConfig(argparse.Namespace):
         self.blocking = False
 
 
-class ClientConfig(argparse.Namespace):
-    def __init__(self, handler):
-        super(ClientConfig, self).__init__()
+class LocalClientConfig(argparse.Namespace):
+    def __init__(self, handler: Type[Handler]) -> None:
+        super(LocalClientConfig, self).__init__()
         self.address_family = socket.AF_INET
         self.socket_type = socket.SOCK_STREAM
-        self.address = '127.0.0.1'
+        self.address = ''
+        self.port = 12344
+        self.local_port = 7690
+        self.client_num = 5
+        self.handler = handler
+        self.blocking = False
+
+
+class RemoteClientConfig(argparse.Namespace):
+    def __init__(self, handler: Type[Handler]):
+        super(RemoteClientConfig, self).__init__()
+        self.address_family = socket.AF_INET
+        self.socket_type = socket.SOCK_STREAM
+        self.address = 'freedom.flicker-soul.me'
         self.port = 12344
         self.local_port = 7790
         self.client_num = 5
