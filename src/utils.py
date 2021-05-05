@@ -199,7 +199,7 @@ class Handler:
     def generate_remote(self, addr_info: Tuple) -> socket.socket:
         raise NotImplementedError
 
-    def connect(self, remote) -> None:
+    def connect(self, remote, interval: float = 0.5) -> None:
         try:
             self.logger.debug(f'connect client {self.client.getsockname()} -> {self.client.getpeername()}')
             self.logger.debug(f'connect remote {remote.getsockname()} -> {remote.getpeername()}')
@@ -209,7 +209,7 @@ class Handler:
                 selector.register(remote, selectors.EVENT_READ)
 
                 while True:
-                    read = tuple(c[0].fileobj for c in selector.select())
+                    read = tuple(c[0].fileobj for c in selector.select(interval))
 
                     self.logger.debug(f'read descriptors: {read}')
 

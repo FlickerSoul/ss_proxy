@@ -159,7 +159,6 @@ class ClientHandler(Handler):
                 remote = self.generate_remote((self.socks_server_addr, self.socks_server_port))
                 # remote.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
-                # self.send_encrypt(remote, addr_to_send)
                 remote.send(request_bytes)
             except socket.error as e:
                 self.logger.error(e)
