@@ -1,44 +1,69 @@
 from __future__ import annotations
 
-
 import argparse
-import enum
-import json
-import logging
-import pathlib
+from typing import Type
 
 from __doc__ import *
-
-
-class _LoggingMapping(enum.Enum):
-    debug = logging.DEBUG
-    info = logging.INFO
-    warn = logging.WARN
-    error = logging.ERROR
-    critical = logging.CRITICAL
+from client import ClientHandler, SocksClient
+from server import SocksServer, ServerHandler
+from utils import ServerConfig, RemoteClientConfig, LocalClientConfig, Server, Handler, output_error_exc, get_logger
 
 
 def main() -> None:
+    logger = get_logger('main')
+
     parser = argparse.ArgumentParser(description=__description__)
-    parser.add_argument('type', dest='type', choices=['server', 'client'], type=str, default='server')
-    parser.add_argument('-c',
-                        dest='config_file',
-                        type=pathlib.Path,
-                        default=pathlib.Path(__file__).parent / 'conf.json')
+    parser.add_argument('type',
+                        choices=['server', 'remote_client', 'local_client'],
+                        type=str,
+                        default='server')
+
     parser.add_argument('--version', action='version', version=f'{__title__} {__version__}')
 
     args: argparse.Namespace = parser.parse_args()
-    config_file: pathlib.Path = args.config_file
-    if not config_file.is_file():
-        logging.error(f'configuration {config_file} is not a file.')
-        logging.error('exit')
-        exit(1)
 
-    logging.info(f'Got configuration path {config_file}.')
+    server_type: str = args.type
+    logger.info(f'launch {server_type}')
 
-    with open(config_file) as file:
-        try:
-            config_file = json.load(file)
-        except json.JSONDecodeError:
-            logging.error(f'Cannot parse json file {config_file}')
-            exit(1)
+    launcher_cls: Type[Server]
+    launcher_handler: Type[Handler]
+    launcher_config_cls: Type[argparse.Namespace]
+
+    if args.type == 'server':
+        launcher_cls = SocksServer
+        launcher_handler = ServerHandler
+        launcher_config_cls = ServerConfig
+    elif server_type.endswith('client'):
+        launcher_cls = SocksClient
+        launcher_handler = ClientHandler
+        if server_type == 'remote_client':
+            launcher_config_cls = RemoteClientConfig
+        elif server_type == 'local_client':
+            launcher_config_cls = LocalClientConfig
+        else:
+            logger.error(f'unknown client type: {server_type}')
+            raise
+    else:
+        logger.error(f'unrecognized type {args.type}')
+        raise
+
+    logger.info(f'launcher type: {launcher_cls}')
+    logger.info(f'launcher config type: {launcher_config_cls}')
+    logger.info(f'launcher handler type: {launcher_handler}')
+
+    try:
+        config = launcher_config_cls(launcher_handler)
+        launcher = launcher_cls(config)
+        logger.info(f'started server at {""}:{config.local_port}')
+        launcher.run_server()
+    except KeyboardInterrupt:
+        logger.error('Key board interrupted')
+        output_error_exc(logger)
+    except Exception as err:
+        logger.error(f'error {err} occurs.')
+    finally:
+        logger.info('server stopped')
+
+
+if __name__ == '__main__':
+    main()

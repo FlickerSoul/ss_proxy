@@ -5,7 +5,7 @@ import struct
 import logging
 from typing import Tuple
 
-from utils import AddrType, Handler, Server, ServerConfig, output_error_exc
+from utils import AddrType, Handler, Server, ServerConfig, output_error_exc, get_logger
 
 
 class SocksServer(Server):
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     config = ServerConfig(ServerHandler)
 
-    logger = logging.getLogger('server_main')
+    logger = get_logger('server_main')
 
     try:
         server = SocksServer(config)

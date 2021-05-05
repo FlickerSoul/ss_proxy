@@ -61,8 +61,20 @@ class ReplyType(enum.IntEnum):
     ff_unassigned = 0x09
 
 
+def get_logger(name: str,
+               level: int = logging.INFO,
+               handler: logging.Handler = logging.StreamHandler()) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    return logger
+
+
 class Server:
-    logger = logging.getLogger('server')
+    logger = get_logger('server')
 
     def __init__(self, args: argparse.Namespace = None):
         self.address_family = args.address_family
@@ -166,7 +178,7 @@ class Server:
 
 
 class Handler:
-    logger = logging.getLogger('handler')
+    logger = get_logger('handler')
 
     def __init__(self, client: socket.socket, client_addr: Any, server: Server) -> None:
         self.client = client
