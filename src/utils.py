@@ -215,7 +215,7 @@ class Handler:
 
                     if self.client in read:
                         data = self.client.recv(4096)
-                        self.logger.info(f'read client: {data}')
+                        self.logger.debug(f'read client: {data}')
                         if len(data) <= 0:
                             self.logger.debug('client break')
                             break
