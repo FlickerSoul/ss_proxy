@@ -124,7 +124,6 @@ class Server:
 
     def init_socket(self) -> socket.socket:
         s = socket.socket(self.address_family, self.socket_type)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(
             ('', self.local_port)
         )
