@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import socket
 import struct
-import logging
 from typing import Tuple
 
-from utils import AddrType, Handler, Server, ServerConfig, output_error_exc, get_logger
+from utils import AddrType, Handler, Server, ServerConfig, output_error_exc, get_logger, set_default_level
 
 
 class SocksServer(Server):
@@ -49,7 +48,7 @@ class ServerHandler(Handler):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    set_default_level('debug')
     config = ServerConfig(ServerHandler)
 
     logger = get_logger('server_main')

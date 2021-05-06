@@ -8,7 +8,7 @@ import selectors
 import socket
 import threading
 from selectors import PollSelector
-from typing import Any, BinaryIO, Callable, List, Tuple, Optional, Type, Union
+from typing import Any, BinaryIO, Callable, List, Tuple, Optional, Type
 
 
 class CommandType(enum.IntEnum):
@@ -97,9 +97,9 @@ set_default_level = LoggerHelper.set_default_level
 
 
 class Server:
-    logger = get_logger('server')
 
     def __init__(self, args: argparse.Namespace = None):
+        self.logger = get_logger('server')
         self.address_family = args.address_family
         self.socket_type = args.socket_type
         self.socket_address = args.address
@@ -201,9 +201,9 @@ class Server:
 
 
 class Handler:
-    logger = get_logger('handler')
 
     def __init__(self, client: socket.socket, client_addr: Any, server: Server) -> None:
+        self.logger = get_logger('handler')
         self.client = client
         self.client_addr = client_addr
         self.server = server

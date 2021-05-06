@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import logging
 import struct
 import socket
 from typing import Tuple, Optional
 
 from utils import Server, Handler, ReplyType, AddrType, CommandType, RemoteClientConfig, LocalClientConfig, \
-    output_error_exc, get_logger
+    output_error_exc, get_logger, set_default_level
 
 
 class SocksClient(Server):
@@ -167,7 +166,7 @@ class ClientHandler(Handler):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    set_default_level('debug')
     
     logger = get_logger('client_main')
     is_remote = True
