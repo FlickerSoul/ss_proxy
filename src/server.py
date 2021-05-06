@@ -13,8 +13,10 @@ class SocksServer(Server):
 
 class ServerHandler(Handler):
     def generate_remote(self, addr_info: Tuple, family_type: int = socket.AF_INET) -> socket.socket:
+        self.logger.debug(f'family type: {family_type}, connection info: {addr_info}')
         remote = socket.socket(family_type, socket.SOCK_STREAM)
         remote.connect(addr_info)
+        self.logger.debug(f'established')
         return remote
 
     def handle(self) -> None:
@@ -43,6 +45,7 @@ class ServerHandler(Handler):
         self.logger.debug(f'got port {port}')
 
         try:
+            self.logger.info(f'generating remote socket')
             remote = self.generate_remote((addr, port), family)
             self.logger.info(f'connecting {(addr, port)}')
             self.connect(remote)
