@@ -95,20 +95,20 @@ class ClientHandler(Handler):
         addr_to_send: bytes = data[3:]
 
         if addr_type == AddrType.ipv4:
-            addr_ip: bytes = self.read_file.read(4)
-            addr = socket.inet_ntoa(addr_ip)
-            addr_to_send += addr_ip
-            self.logger.debug('is ipv4')
+            raw_addr: bytes = self.read_file.read(4)
+            addr = socket.inet_ntoa(raw_addr)
+            addr_to_send += data
+            self.logger.debug(f'{raw_addr} is ipv4')
+        elif addr_type == AddrType.ipv6:
+            raw_addr = self.read_file.read(16)
+            addr = socket.inet_ntop(socket.AF_INET6, raw_addr)
+            addr_to_send += raw_addr
+            self.logger.debug(f'{raw_addr} is ipv6')
         elif addr_type == AddrType.domain:
             addr_len: bytes = self.read_file.read(1)
-            addr = self.read_file.read(ord(addr_len))
-            addr_to_send += addr_len + addr
-            self.logger.debug('is domain name')
-        elif addr_type == AddrType.ipv6:
-            addr_ip = self.read_file.read(16)
-            addr = socket.inet_ntoa(addr_ip)
-            addr_to_send += addr_ip
-            self.logger.debug('is ipv6')
+            addr = raw_addr = self.read_file.read(ord(addr_len))
+            addr_to_send += addr_len + raw_addr
+            self.logger.debug(f'{raw_addr} is domain name')
         else:
             self.logger.error('address type not supported')
             return None
@@ -155,10 +155,7 @@ class ClientHandler(Handler):
             self.logger.debug('finished getting request')
 
             try:
-                # reply immediately
                 remote = self.generate_remote((self.socks_server_addr, self.socks_server_port))
-                # remote.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-
                 remote.send(request_bytes)
             except socket.error as e:
                 self.logger.error(e)

@@ -61,16 +61,36 @@ class ReplyType(enum.IntEnum):
     ff_unassigned = 0x09
 
 
-def get_logger(name: str,
-               level: int = logging.INFO,
-               handler: logging.Handler = logging.StreamHandler()) -> logging.Logger:
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+class _LoggingMapping(enum.Enum):
+    debug = logging.DEBUG
+    info = logging.INFO
+    warn = logging.WARN
+    error = logging.ERROR
 
-    return logger
+
+class LoggerHelper:
+    default_level: int = logging.INFO
+
+    @classmethod
+    def set_default_level(cls, level_name: str) -> None:
+        cls.default_level = getattr(_LoggingMapping, level_name, logging.INFO)
+
+    @classmethod
+    def get_logger(cls,
+                   name: str,
+                   level: int = None,
+                   handler: logging.Handler = logging.StreamHandler()) -> logging.Logger:
+        logger = logging.getLogger(name)
+        logger.setLevel(cls.default_level if level is None else level)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+        return logger
+
+
+get_logger = LoggerHelper.get_logger
+set_default_level = LoggerHelper.set_default_level
 
 
 class Server:
@@ -101,7 +121,7 @@ class Server:
 
     def init_socket(self) -> socket.socket:
         s = socket.socket(self.address_family, self.socket_type)
-        # s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(
             ('', self.local_port)
         )
@@ -226,7 +246,7 @@ class Handler:
 
                     if remote in read:
                         data = remote.recv(4096)
-                        self.logger.info(f'read remote: {data}')
+                        self.logger.debug(f'read remote: {data}')
                         if len(data) <= 0:
                             self.logger.debug('client break')
                             break

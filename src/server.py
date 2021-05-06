@@ -22,15 +22,17 @@ class ServerHandler(Handler):
         address_type = ord(self.client.recv(1))
 
         if address_type == AddrType.ipv4:
-            addr = socket.inet_ntoa(self.read_file.read(4))
-            self.logger.debug('is ipv4')
+            data = self.read_file.read(4)
+            self.logger.debug(f'{data} is ipv4')
+            addr = socket.inet_ntoa(data)
         elif address_type == AddrType.ipv6:
-            addr = socket.inet_ntop(socket.AF_INET6, self.read_file.read(16))
-            self.logger.debug('is ipv6')
+            data = self.read_file.read(16)
+            self.logger.debug(f'{data} is ipv6')
+            addr = socket.inet_ntop(socket.AF_INET6, data)
         elif address_type == AddrType.domain:
             length = ord(self.client.recv(1))
             addr = self.read_file.read(length)
-            self.logger.debug('is domain name')
+            self.logger.debug(f'{addr} is domain name')
         else:
             self.logger.error('addr type not supported')
             return

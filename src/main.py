@@ -6,21 +6,25 @@ from typing import Type
 from __doc__ import *
 from client import ClientHandler, SocksClient
 from server import SocksServer, ServerHandler
-from utils import ServerConfig, RemoteClientConfig, LocalClientConfig, Server, Handler, output_error_exc, get_logger
+from utils import ServerConfig, RemoteClientConfig, LocalClientConfig, Server, Handler, output_error_exc, get_logger, \
+    set_default_level
 
 
 def main() -> None:
-    logger = get_logger('main')
-
     parser = argparse.ArgumentParser(description=__description__)
     parser.add_argument('type',
                         choices=['server', 'remote_client', 'local_client'],
                         type=str,
                         default='server')
+    parser.add_argument('--level', '-l', choices=['info', 'debug', 'warn', 'error'], type=str)
 
     parser.add_argument('--version', action='version', version=f'{__title__} {__version__}')
 
     args: argparse.Namespace = parser.parse_args()
+
+    set_default_level(args.level)
+
+    logger = get_logger('main')
 
     server_type: str = args.type
     logger.info(f'launch {server_type}')
