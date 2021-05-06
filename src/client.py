@@ -98,16 +98,19 @@ class ClientHandler(Handler):
             addr = socket.inet_ntoa(raw_addr)
             addr_to_send += data
             self.logger.debug(f'{raw_addr} is ipv4')
+            family = socket.AF_INET
         elif addr_type == AddrType.ipv6:
             raw_addr = self.read_file.read(16)
             addr = socket.inet_ntop(socket.AF_INET6, raw_addr)
             addr_to_send += raw_addr
             self.logger.debug(f'{raw_addr} is ipv6')
+            family = socket.AF_INET6
         elif addr_type == AddrType.domain:
             addr_len: bytes = self.read_file.read(1)
             addr = raw_addr = self.read_file.read(ord(addr_len))
             addr_to_send += addr_len + raw_addr
             self.logger.debug(f'{raw_addr} is domain name')
+            family = socket.AF_INET
         else:
             self.logger.error('address type not supported')
             return None
@@ -129,12 +132,8 @@ class ClientHandler(Handler):
             (addr, port), addr_to_send
         )
 
-    def generate_remote(self, addr_info: Tuple) -> socket.socket:
-        if self.ipv6_flag:
-            remote = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        else:
-            remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+    def generate_remote(self, addr_info: Tuple, family_type: int = socket.AF_INET) -> socket.socket:
+        remote = socket.socket(family_type, socket.SOCK_STREAM)
         remote.settimeout(None)
         remote.connect(addr_info)
         return remote

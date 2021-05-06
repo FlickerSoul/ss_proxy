@@ -12,8 +12,8 @@ class SocksServer(Server):
 
 
 class ServerHandler(Handler):
-    def generate_remote(self, addr_info: Tuple) -> socket.socket:
-        remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    def generate_remote(self, addr_info: Tuple, family_type: int = socket.AF_INET) -> socket.socket:
+        remote = socket.socket(family_type, socket.SOCK_STREAM)
         remote.connect(addr_info)
         return remote
 
@@ -24,14 +24,17 @@ class ServerHandler(Handler):
             data = self.read_file.read(4)
             self.logger.debug(f'{data} is ipv4')
             addr = socket.inet_ntoa(data)
+            family = socket.AF_INET
         elif address_type == AddrType.ipv6:
             data = self.read_file.read(16)
             self.logger.debug(f'{data} is ipv6')
             addr = socket.inet_ntop(socket.AF_INET6, data)
+            family = socket.AF_INET6
         elif address_type == AddrType.domain:
             length = ord(self.client.recv(1))
             addr = self.read_file.read(length)
             self.logger.debug(f'{addr} is domain name')
+            family = socket.AF_INET
         else:
             self.logger.error('addr type not supported')
             return
@@ -40,7 +43,7 @@ class ServerHandler(Handler):
         self.logger.debug(f'got port {port}')
 
         try:
-            remote = self.generate_remote((addr, port))
+            remote = self.generate_remote((addr, port), family)
             self.logger.info(f'connecting {(addr, port)}')
             self.connect(remote)
         except socket.error as e:

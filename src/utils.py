@@ -218,7 +218,7 @@ class Handler:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def generate_remote(self, addr_info: Tuple) -> socket.socket:
+    def generate_remote(self, addr_info: Tuple, family_type: int = socket.AF_INET) -> socket.socket:
         raise NotImplementedError
 
     def connect(self, remote, interval: float = 0.5) -> None:
