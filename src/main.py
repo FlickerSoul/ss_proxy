@@ -16,7 +16,10 @@ def main() -> None:
                         choices=['server', 'remote_client', 'local_client'],
                         type=str,
                         default='server')
-    parser.add_argument('--level', '-l', choices=['info', 'debug', 'warn', 'error'], type=str)
+    parser.add_argument('--level', '-l',
+                        choices=['info', 'debug', 'warn', 'error'],
+                        type=str,
+                        default='info')
 
     parser.add_argument('--version', action='version', version=f'{__title__} {__version__}')
 
