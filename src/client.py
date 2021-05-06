@@ -91,26 +91,23 @@ class ClientHandler(Handler):
             self.logger.error(f'command is not CONNECT')
             return None
 
-        addr_to_send: bytes = data[3:]
+        addr_to_send: bytes = bytes([addr_type])
 
         if addr_type == AddrType.ipv4:
             raw_addr: bytes = self.read_file.read(4)
             addr = socket.inet_ntoa(raw_addr)
-            addr_to_send += data
+            addr_to_send += raw_addr
             self.logger.debug(f'{raw_addr} is ipv4')
-            family = socket.AF_INET
         elif addr_type == AddrType.ipv6:
             raw_addr = self.read_file.read(16)
             addr = socket.inet_ntop(socket.AF_INET6, raw_addr)
             addr_to_send += raw_addr
             self.logger.debug(f'{raw_addr} is ipv6')
-            family = socket.AF_INET6
         elif addr_type == AddrType.domain:
             addr_len: bytes = self.read_file.read(1)
             addr = raw_addr = self.read_file.read(ord(addr_len))
             addr_to_send += addr_len + raw_addr
             self.logger.debug(f'{raw_addr} is domain name')
-            family = socket.AF_INET
         else:
             self.logger.error('address type not supported')
             return None
@@ -151,6 +148,7 @@ class ClientHandler(Handler):
 
             connect_dest, request_bytes = request_feedback
             self.logger.debug('finished getting request')
+            self.logger.debug(f'request bytes: {request_bytes}')
 
             try:
                 remote = self.generate_remote((self.socks_server_addr, self.socks_server_port))
