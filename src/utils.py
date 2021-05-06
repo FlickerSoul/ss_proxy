@@ -8,7 +8,7 @@ import selectors
 import socket
 import threading
 from selectors import PollSelector
-from typing import Any, BinaryIO, Callable, List, Tuple, Optional, Type
+from typing import Any, BinaryIO, Callable, List, Tuple, Optional, Type, Union
 
 
 class CommandType(enum.IntEnum):
@@ -73,7 +73,7 @@ class LoggerHelper:
 
     @classmethod
     def set_default_level(cls, level_name: str) -> None:
-        cls.default_level = getattr(_LoggingMapping, level_name, logging.INFO)
+        cls.default_level = getattr(_LoggingMapping, level_name, _LoggingMapping.info).value
 
     @classmethod
     def get_logger(cls,
@@ -81,7 +81,10 @@ class LoggerHelper:
                    level: int = None,
                    handler: logging.Handler = logging.StreamHandler()) -> logging.Logger:
         logger = logging.getLogger(name)
-        logger.setLevel(cls.default_level if level is None else level)
+        if level is None:
+            logger.setLevel(cls.default_level)
+        else:
+            logger.setLevel(level)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
