@@ -8,7 +8,7 @@ import selectors
 import socket
 import threading
 from selectors import PollSelector
-from typing import Any, BinaryIO, Callable, List, Tuple, Optional, Type
+from typing import Any, Callable, List, Tuple, Type
 
 
 class CommandType(enum.IntEnum):
@@ -206,12 +206,12 @@ class Handler:
         self.client = client
         self.client_addr = client_addr
         self.server = server
-        self.read_file: Optional[BinaryIO] = None
-        self.write_file: Optional[BinaryIO] = None
+        # self.read_file: Optional[BinaryIO] = None
+        # self.write_file: Optional[BinaryIO] = None
 
-    def init(self) -> None:
-        self.read_file: BinaryIO = self.client.makefile('rb')
-        self.write_file: BinaryIO = self.client.makefile('wb')
+    # def init(self) -> None:
+    #     self.read_file: BinaryIO = self.client.makefile('rb')
+    #     self.write_file: BinaryIO = self.client.makefile('wb')
 
     @abc.abstractmethod
     def handle(self) -> None:
@@ -260,21 +260,22 @@ class Handler:
             self.client.close()
             remote.close()
 
-    def end(self) -> None:
-        if not self.write_file.closed:
-            try:
-                self.write_file.flush()
-            except socket.error:
-                pass
-        self.write_file.close()
-        self.read_file.close()
+    # def end(self) -> None:
+    #     if not self.write_file.closed:
+    #         try:
+    #             self.write_file.flush()
+    #         except socket.error:
+    #             pass
+    #     self.write_file.close()
+    #     self.read_file.close()
 
     def __call__(self, *args, **kwargs):
-        self.init()
+        # self.init()
         try:
             self.handle()
         finally:
-            self.end()
+            # self.end()
+            pass
 
 
 def output_error_exc(lgr: logging.Logger) -> None:

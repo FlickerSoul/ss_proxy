@@ -23,25 +23,25 @@ class ServerHandler(Handler):
         address_type = ord(self.client.recv(1))
 
         if address_type == AddrType.ipv4:
-            data = self.read_file.read(4)
+            data = self.client.recv(4)
             self.logger.debug(f'{data} is ipv4')
             addr = socket.inet_ntoa(data)
             family = socket.AF_INET
         elif address_type == AddrType.ipv6:
-            data = self.read_file.read(16)
+            data = self.client.recv(16)
             self.logger.debug(f'{data} is ipv6')
             addr = socket.inet_ntop(socket.AF_INET6, data)
             family = socket.AF_INET6
         elif address_type == AddrType.domain:
             length = ord(self.client.recv(1))
-            addr = self.read_file.read(length)
+            addr = self.client.recv(length)
             self.logger.debug(f'{addr} is domain name')
             family = socket.AF_INET
         else:
             self.logger.error('addr type not supported')
             return
 
-        port = struct.unpack('>H', self.read_file.read(2))[0]
+        port = struct.unpack('>H', self.client.recv(2))[0]
         self.logger.debug(f'got port {port}')
 
         try:

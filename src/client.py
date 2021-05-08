@@ -94,25 +94,25 @@ class ClientHandler(Handler):
         addr_to_send: bytes = bytes([addr_type])
 
         if addr_type == AddrType.ipv4:
-            raw_addr: bytes = self.read_file.read(4)
+            raw_addr: bytes = self.client.recv(4)
             addr = socket.inet_ntoa(raw_addr)
             addr_to_send += raw_addr
             self.logger.debug(f'{raw_addr} is ipv4')
         elif addr_type == AddrType.ipv6:
-            raw_addr = self.read_file.read(16)
+            raw_addr = self.client.recv(16)
             addr = socket.inet_ntop(socket.AF_INET6, raw_addr)
             addr_to_send += raw_addr
             self.logger.debug(f'{raw_addr} is ipv6')
         elif addr_type == AddrType.domain:
-            addr_len: bytes = self.read_file.read(1)
-            addr = raw_addr = self.read_file.read(ord(addr_len))
+            addr_len: bytes = self.client.recv(1)
+            addr = raw_addr = self.client.recv(ord(addr_len))
             addr_to_send += addr_len + raw_addr
             self.logger.debug(f'{raw_addr} is domain name')
         else:
             self.logger.error('address type not supported')
             return None
 
-        addr_port = self.read_file.read(2)
+        addr_port = self.client.recv(2)
 
         addr_to_send += addr_port
 
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     set_default_level('debug')
     
     logger = get_logger('client_main')
-    is_remote = True
+    is_remote = False
     if is_remote:
         config = RemoteClientConfig(ClientHandler)
     else:
