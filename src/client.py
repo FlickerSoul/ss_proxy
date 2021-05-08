@@ -23,13 +23,9 @@ class ClientHandler(Handler):
     def write(self, fmt, *args) -> None:
         send_data = struct.pack(fmt, *args)
 
-        self.client.send(
-            send_data
-        )
+        self.client.sendall(send_data)
 
-        self.logger.debug(
-            f'send data via send: {send_data}'
-        )
+        self.logger.debug(f'send data via send: {send_data}')
 
     def reply(self,
               code: ReplyType,
@@ -38,9 +34,7 @@ class ClientHandler(Handler):
               port: int = 0) -> None:
 
         self.logger.debug(f'reply code {code}, addr type: {address_type}, addr: {addr}, port: {port}')
-        self.write(
-            '!BBBB',  0x05, code, 0x00, address_type.value
-        )
+        self.write('!BBBB',  0x05, code, 0x00, address_type.value)
         self.client.send(addr)
         self.write('!H', port)
 
@@ -53,25 +47,20 @@ class ClientHandler(Handler):
                 self.handshake_pack_format, handshake_data
             )
             self.logger.debug(f'got handshake data, ver: {version}, method len: {method_len}')
-        except struct.error:
-            self.reply(
-                ReplyType.general_failure
-            )
+        except struct.error as e:
+            self.reply(ReplyType.general_failure)
+            self.logger.error(f'unpack handshake data error: {e}')
             return False
 
         if version != 0x05:
-            self.reply(
-                ReplyType.connection_refuse
-            )
+            self.reply(ReplyType.connection_refuse)
             self.logger.error(f'not socks5')
             return False
 
         self.client.recv(method_len)
 
-        self.write(
-            'BB', 0x05, 0x00
-        )
-        self.logger.debug(f'replied handshake')
+        self.write('BB', 0x05, 0x00)
+        self.logger.debug(f'accepted handshake')
 
         return True
 
@@ -85,9 +74,7 @@ class ClientHandler(Handler):
         )
 
         if cmd != CommandType.connect:
-            self.reply(
-                ReplyType.command_not_supported
-            )
+            self.reply(ReplyType.command_not_supported)
             self.logger.error(f'command is not CONNECT')
             return None
 
@@ -97,12 +84,12 @@ class ClientHandler(Handler):
             raw_addr: bytes = self.client.recv(4)
             addr = socket.inet_ntoa(raw_addr)
             addr_to_send += raw_addr
-            self.logger.debug(f'{raw_addr} is ipv4')
+            self.logger.debug(f'{raw_addr} ({addr}) is ipv4')
         elif addr_type == AddrType.ipv6:
             raw_addr = self.client.recv(16)
             addr = socket.inet_ntop(socket.AF_INET6, raw_addr)
             addr_to_send += raw_addr
-            self.logger.debug(f'{raw_addr} is ipv6')
+            self.logger.debug(f'{raw_addr} ({addr}) is ipv6')
         elif addr_type == AddrType.domain:
             addr_len: bytes = self.client.recv(1)
             addr = raw_addr = self.client.recv(ord(addr_len))
@@ -120,10 +107,8 @@ class ClientHandler(Handler):
 
         self.logger.debug(f'got port {port}')
 
-        self.reply(
-            ReplyType.succeed
-        )
-        self.logger.debug('replied succeed')
+        self.reply(ReplyType.succeed)
+        self.logger.debug('request accepted')
 
         return (
             (addr, port), addr_to_send
@@ -139,12 +124,12 @@ class ClientHandler(Handler):
         try:
             status = self.handshake()
             if not status:
-                raise
+                raise Exception('handshake failed')
             self.logger.debug('finished handshake')
 
             request_feedback = self.get_request()
             if request_feedback is None:
-                raise
+                raise Exception('request handling failed')
 
             connect_dest, request_bytes = request_feedback
             self.logger.debug('finished getting request')
@@ -154,12 +139,14 @@ class ClientHandler(Handler):
                 remote = self.generate_remote((self.socks_server_addr, self.socks_server_port))
                 remote.send(request_bytes)
             except socket.error as e:
-                self.logger.error(e)
+                self.logger.error(f'failed to talk to remote server: {e})')
+                output_error_exc(self.logger)
                 return
             self.logger.info(f'connecting {connect_dest}')
             self.connect(remote)
         except socket.error as e:
-            self.logger.error(e)
+            self.logger.error(f'socket error happened: {e}')
+            output_error_exc(self.logger)
 
 
 if __name__ == '__main__':

@@ -24,13 +24,13 @@ class ServerHandler(Handler):
 
         if address_type == AddrType.ipv4:
             data = self.client.recv(4)
-            self.logger.debug(f'{data} is ipv4')
             addr = socket.inet_ntoa(data)
+            self.logger.debug(f'{data} ({addr}) is ipv4')
             family = socket.AF_INET
         elif address_type == AddrType.ipv6:
             data = self.client.recv(16)
-            self.logger.debug(f'{data} is ipv6')
             addr = socket.inet_ntop(socket.AF_INET6, data)
+            self.logger.debug(f'{data} ({addr}) is ipv6')
             family = socket.AF_INET6
         elif address_type == AddrType.domain:
             length = ord(self.client.recv(1))
@@ -51,6 +51,7 @@ class ServerHandler(Handler):
             self.connect(remote)
         except socket.error as e:
             self.logger.error(e)
+            output_error_exc(self.logger)
 
 
 if __name__ == '__main__':
