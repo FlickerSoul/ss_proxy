@@ -103,7 +103,7 @@ set_default_level = LoggerHelper.set_default_level
 
 
 class Server:
-    """The client and proxy server"""
+    """The client and proxy server, got some inspiration from socketserver.TCPServer"""
     def __init__(self, args: argparse.Namespace = None):
         self.logger = get_logger('server')
         self.address_family = args.address_family
