@@ -19,7 +19,7 @@ class ServerHandler(Handler):
         self.logger.debug(f'established')
         return remote
 
-    def handle(self) -> None:
+    def _handle(self) -> None:
         address_type = ord(self.client.recv(1))
 
         if address_type == AddrType.ipv4:

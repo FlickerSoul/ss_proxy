@@ -204,7 +204,7 @@ class Server:
     def _thread_helper(self, client: socket.socket, client_addr: Tuple) -> None:
         try:
             self.logger.info('start handling')
-            self.handler(client, client_addr)()
+            self.handler(client, client_addr).handle()
         except Exception as e:
             self.logger.error(f'error {e} occurred when talking to client {client_addr}')
             output_error_exc(self.logger)
@@ -220,7 +220,7 @@ class Handler:
         self.client_addr = client_addr
 
     @abc.abstractmethod
-    def handle(self) -> None:
+    def _handle(self) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -228,19 +228,33 @@ class Handler:
         raise NotImplementedError
 
     def connect(self, remote, interval: float = 0.5) -> None:
+        """transport data
+        self.client <-> remote
+
+        As a proxy client, the  self.client is a connection to
+        local application connected with socks5 protocol
+        and remote is the proxy server
+
+        As a proxy server, the self.client is a connection to
+        the proxy client and remote is the target server specified
+        in DST.ADDR and DST.PORT
+        """
         try:
             self.logger.debug(f'connect client {self.client.getsockname()} -> {self.client.getpeername()}')
             self.logger.debug(f'connect remote {remote.getsockname()} -> {remote.getpeername()}')
 
             with DefaultSelector() as selector:
+                # register both sockets in select
                 selector.register(self.client, selectors.EVENT_READ)
                 selector.register(remote, selectors.EVENT_READ)
 
                 while True:
+                    # wait for the system call
                     read = tuple(c[0].fileobj for c in selector.select(interval))
 
                     self.logger.debug(f'read descriptors: {read}')
 
+                    # transport client data to remote
                     if self.client in read:
                         data = self.client.recv(4096)
                         self.logger.debug(f'read client: {data}')
@@ -252,6 +266,7 @@ class Handler:
                         if result is not None:
                             raise Exception('failed to send data to remote')
 
+                    # transport remote data to client
                     if remote in read:
                         data = remote.recv(4096)
                         self.logger.debug(f'read remote: {data}')
@@ -266,9 +281,9 @@ class Handler:
             self.client.close()
             remote.close()
 
-    def __call__(self, *args, **kwargs):
+    def handle(self, *args, **kwargs):
         try:
-            self.handle()
+            self._handle()
         finally:
             self.logger.info(f"handled {self.client_addr}")
 
