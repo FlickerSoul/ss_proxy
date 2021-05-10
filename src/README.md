@@ -25,11 +25,11 @@ python3 main.py [-h] [--config CONFIG] [--level {info,debug,warn,error}] [--vers
 Example: 
 
 ```bash
-python3 main.py server --config configs.ServerConfig -l debug  # open local server
+python3 main.py server --config configs.ServerConfig -l debug  # open a server
 ```
 
 ```bash
-python3 main.py server --config configs.LocalClientConfig -l debug  # open local client 
+python3 main.py server --config configs.LocalClientConfig -l debug  # open a local client 
 ```
 
 The configurations for proxy server and proxy client are located `configs.py`. There are three default configurations: `ServerConfig`, `LocalClientConfig`, and `RemoteClientConfig`. 
