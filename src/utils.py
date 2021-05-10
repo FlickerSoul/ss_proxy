@@ -281,7 +281,7 @@ class Handler:
             self.client.close()
             remote.close()
 
-    def handle(self, *args, **kwargs):
+    def handle(self):
         try:
             self._handle()
         finally:
