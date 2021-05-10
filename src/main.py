@@ -6,8 +6,9 @@ from typing import Type
 from __doc__ import *
 from client import ClientHandler, SocksClient
 from server import SocksServer, ServerHandler
-from utils import ServerConfig, RemoteClientConfig, LocalClientConfig, Server, Handler, output_error_exc, get_logger, \
-    set_default_level, ConfigBase
+from utils import Server, Handler, output_error_exc, get_logger, \
+    set_default_level
+from configs import ConfigBase, ServerConfig, RemoteClientConfig, LocalClientConfig
 
 
 def main() -> None:

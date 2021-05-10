@@ -4,7 +4,8 @@ import socket
 import struct
 from typing import Tuple
 
-from utils import AddrType, Handler, Server, ServerConfig, output_error_exc, get_logger, set_default_level
+from utils import AddrType, Handler, Server, output_error_exc, get_logger, set_default_level
+from configs import ServerConfig
 
 
 class SocksServer(Server):

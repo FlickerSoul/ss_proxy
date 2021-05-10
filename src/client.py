@@ -4,8 +4,10 @@ import struct
 import socket
 from typing import Tuple, Optional
 
-from utils import Server, Handler, ReplyType, AddrType, CommandType, RemoteClientConfig, LocalClientConfig, \
+from utils import Server, Handler, ReplyType, AddrType, CommandType, \
     output_error_exc, get_logger, set_default_level
+
+from configs import RemoteClientConfig, LocalClientConfig
 
 
 class SocksClient(Server):
