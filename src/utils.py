@@ -283,7 +283,12 @@ def output_error_exc(lgr: logging.Logger) -> None:
     lgr.error(traceback.format_exc())
 
 
-class ServerConfig(argparse.Namespace):
+class ConfigBase(argparse.Namespace):
+    def __init__(self):
+        super(ConfigBase, self).__init__()
+
+
+class ServerConfig(ConfigBase):
     address_family = socket.AF_INET
     socket_type = socket.SOCK_STREAM
     address = ''
@@ -297,7 +302,7 @@ class ServerConfig(argparse.Namespace):
         self.handler = handler
 
 
-class LocalClientConfig(argparse.Namespace):
+class LocalClientConfig(ConfigBase):
     address_family = socket.AF_INET
     socket_type = socket.SOCK_STREAM
     address = ''
@@ -311,7 +316,7 @@ class LocalClientConfig(argparse.Namespace):
         self.handler = handler
 
 
-class RemoteClientConfig(argparse.Namespace):
+class RemoteClientConfig(ConfigBase):
     address_family = socket.AF_INET
     socket_type = socket.SOCK_STREAM
     address = 'freedom.flicker-soul.me'

@@ -7,7 +7,7 @@ from __doc__ import *
 from client import ClientHandler, SocksClient
 from server import SocksServer, ServerHandler
 from utils import ServerConfig, RemoteClientConfig, LocalClientConfig, Server, Handler, output_error_exc, get_logger, \
-    set_default_level
+    set_default_level, ConfigBase
 
 
 def main() -> None:
@@ -34,7 +34,7 @@ def main() -> None:
 
     launcher_cls: Type[Server]
     launcher_handler: Type[Handler]
-    launcher_config_cls: Type[argparse.Namespace]
+    launcher_config_cls: Type[ConfigBase]
 
     if args.type == 'server':
         launcher_cls = SocksServer
