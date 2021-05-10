@@ -270,8 +270,7 @@ class Handler:
         try:
             self.handle()
         finally:
-            self.logger.error("something's wring in the handler")
-            output_error_exc(self.logger)
+            self.logger.info(f"handled {self.client_addr}")
 
 
 def output_error_exc(lgr: logging.Logger) -> None:
