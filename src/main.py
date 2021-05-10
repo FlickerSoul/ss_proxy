@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -25,7 +26,7 @@ def _config_import(config_name: str) -> Type[ConfigBase]:
         target_class = getattr(module, config_class)
 
         del module
-        del sys.modules[config_class]
+        del sys.modules[config_path]
 
         return target_class
     except ImportError as e:
