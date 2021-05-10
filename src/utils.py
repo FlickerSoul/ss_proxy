@@ -7,12 +7,13 @@ import logging
 import selectors
 import socket
 import threading
-from selectors import PollSelector
-from typing import Any, Callable, List, Tuple, Type
+from selectors import DefaultSelector
+from typing import Any, List, Tuple, Type
 
 
 class CommandType(enum.IntEnum):
-    """
+    """socks5 commands
+    turns out not to be super helpful
     o  CMD
      o  CONNECT X'01'
      o  BIND X'02'
@@ -24,7 +25,7 @@ class CommandType(enum.IntEnum):
 
 
 class AddrType(enum.IntEnum):
-    """
+    """socks5 address types
     o  ATYP   address type of following address
      o  IP V4 address: X'01'
      o  DOMAINNAME: X'03'
@@ -36,7 +37,8 @@ class AddrType(enum.IntEnum):
 
 
 class ReplyType(enum.IntEnum):
-    """
+    """sockst reply types
+    only used some of them, not supper helpful here
     o  REP    Reply field:
      o  X'00' succeeded
      o  X'01' general SOCKS server failure
@@ -62,6 +64,7 @@ class ReplyType(enum.IntEnum):
 
 
 class _LoggingMapping(enum.Enum):
+    """used to set logger level"""
     debug = logging.DEBUG
     info = logging.INFO
     warn = logging.WARN
@@ -69,6 +72,7 @@ class _LoggingMapping(enum.Enum):
 
 
 class LoggerHelper:
+    """logger wrapper"""
     default_level: int = logging.INFO
 
     @classmethod
@@ -80,6 +84,7 @@ class LoggerHelper:
                    name: str,
                    level: int = None,
                    handler: logging.Handler = logging.StreamHandler()) -> logging.Logger:
+        """get a new logger by specifying the name"""
         logger = logging.getLogger(name)
         if level is None:
             logger.setLevel(cls.default_level)
@@ -92,12 +97,13 @@ class LoggerHelper:
         return logger
 
 
+# some helpful alias
 get_logger = LoggerHelper.get_logger
 set_default_level = LoggerHelper.set_default_level
 
 
 class Server:
-
+    """The client and proxy server"""
     def __init__(self, args: argparse.Namespace = None):
         self.logger = get_logger('server')
         self.address_family = args.address_family
@@ -107,7 +113,7 @@ class Server:
         self.local_port = args.local_port
         self.socket_client_num: int = args.client_num
 
-        self.handler: Callable = args.handler
+        self.handler: Type[Handler] = args.handler
 
         self.socket: socket.socket = self.init_socket()
 
@@ -120,42 +126,50 @@ class Server:
         self.logger.debug(f'init {self}')
 
     def __str__(self):
-        return f'server at {self.socket_address}:{self.remote_port}'
+        return f'server to {self.socket_address}:{self.remote_port}'
 
     def init_socket(self) -> socket.socket:
+        """initialize socket instance
+        set up a socket to listen to the 127.0.0.1:<local_port>
+        so that this handles requests from socks5 protocol or client
+        """
         s = socket.socket(self.address_family, self.socket_type)
-        s.bind(
-            ('', self.local_port)
-        )
-        self.logger.debug(f'socket bonded {self.local_port}')
+        s.bind(('', self.local_port))
+        self.logger.debug(f'socket bonded port {self.local_port}')
         s.listen(self.socket_client_num)
-
         return s
 
     def close_socket(self) -> None:
+        """close socket"""
         if self.socket:
             self.socket.close()
 
     def join_threads(self) -> None:
+        """wait for threads to stop"""
         for t in self.threads:
             t.join()
 
     def stop_server(self) -> None:
+        """coroutine to stop the server
+        not useful in the current application though
+        """
         self.shut_down = True
         self.shut_down_event.wait()
 
     def fileno(self) -> int:
+        """to be used with selector"""
         return self.socket.fileno()
 
     def run_server(self, interval: float = 0.5) -> None:
+        """run server"""
         self.shut_down_event.clear()
         try:
-            with PollSelector() as selector:
+            with DefaultSelector() as selector:
                 selector.register(self, selectors.EVENT_READ)
 
                 while not self.shut_down:
-                    has_request = selector.select(interval)
-                    if has_request:
+                    read_list = selector.select(interval)
+                    if read_list:
                         self.handle_request()
         finally:
             self.shut_down = False
@@ -166,15 +180,17 @@ class Server:
 
     @staticmethod
     def close_client(client: socket.socket) -> None:
+        """close the server socket"""
         # client.shutdown(socket.SHUT_WR)
         client.close()
 
     def handle_request(self) -> None:
+        """handler for accepting client request"""
         try:
             client, client_addr = self.accept_client()
             self.logger.debug(f'accepted client {client.getpeername()} at {client_addr}')
         except socket.error as e:
-            self.logger.error(f'encountered socket error {e}')
+            self.logger.error(f'socket error when accepting new client {e}')
             return
 
         t = threading.Thread(
@@ -183,35 +199,25 @@ class Server:
         )
         self.threads.append(t)
         t.start()
-        self.logger.info('started handler thread')
+        self.logger.info(f'started handler thread for client {client_addr}')
 
     def _thread_helper(self, client: socket.socket, client_addr: Tuple) -> None:
         try:
             self.logger.info('start handling')
-            self.handler(client, client_addr, self)()
+            self.handler(client, client_addr)()
         except Exception as e:
             self.logger.error(f'error {e} occurred when talking to client {client_addr}')
-            import traceback
-            self.logger.error(f'trace back: ')
-            self.logger.error(traceback.format_exc())
+            output_error_exc(self.logger)
         finally:
             self.close_client(client)
             self.logger.debug(f'closed client {client_addr}')
 
 
 class Handler:
-
-    def __init__(self, client: socket.socket, client_addr: Any, server: Server) -> None:
+    def __init__(self, client: socket.socket, client_addr: Any) -> None:
         self.logger = get_logger('handler')
         self.client = client
         self.client_addr = client_addr
-        self.server = server
-        # self.read_file: Optional[BinaryIO] = None
-        # self.write_file: Optional[BinaryIO] = None
-
-    # def init(self) -> None:
-    #     self.read_file: BinaryIO = self.client.makefile('rb')
-    #     self.write_file: BinaryIO = self.client.makefile('wb')
 
     @abc.abstractmethod
     def handle(self) -> None:
@@ -226,7 +232,7 @@ class Handler:
             self.logger.debug(f'connect client {self.client.getsockname()} -> {self.client.getpeername()}')
             self.logger.debug(f'connect remote {remote.getsockname()} -> {remote.getpeername()}')
 
-            with PollSelector() as selector:
+            with DefaultSelector() as selector:
                 selector.register(self.client, selectors.EVENT_READ)
                 selector.register(remote, selectors.EVENT_READ)
 
@@ -260,26 +266,17 @@ class Handler:
             self.client.close()
             remote.close()
 
-    # def end(self) -> None:
-    #     if not self.write_file.closed:
-    #         try:
-    #             self.write_file.flush()
-    #         except socket.error:
-    #             pass
-    #     self.write_file.close()
-    #     self.read_file.close()
-
     def __call__(self, *args, **kwargs):
-        # self.init()
         try:
             self.handle()
         finally:
-            # self.end()
-            pass
+            self.logger.error("something's wring in the handler")
+            output_error_exc(self.logger)
 
 
 def output_error_exc(lgr: logging.Logger) -> None:
     import traceback
+    lgr.error("error traceback: ")
     lgr.error(traceback.format_exc())
 
 
